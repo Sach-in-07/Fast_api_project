@@ -3,20 +3,43 @@ from fastapi.params import Body
 from pydantic import BaseModel
 from typing import Optional
 from random import randrange
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import time,os
+from dotenv import load_dotenv
 
-
+load_dotenv()
 obj = FastAPI()
-
+max_retries = int(os.getenv("MAX_RETRIES", 5))
+retry_count = 0
 # app = FastAPI() # during running the server uvicorn <pyfile name(here it is main)>:<instance name(here it is obj or app)> --reload(for auto reloading) <port>
 # if there is two same function with same HTTP method then first apply one who is write first,after that they don't search
 
 class Post(BaseModel):
     title : str
     content : str
-    # id : int
+    id : int
     publish : bool = True # optional one
-    rating: Optional[int] = None # using library 
-    
+    # rating: Optional[int] = None # using library 
+
+while retry_count<max_retries:    
+    try:
+        # conn = psycopg2.connect("dbname=fastapi user=postgres password=sachi")
+        conn = psycopg2.connect(host=os.getenv("DATABASE_HOST","localhost"),database=os.getenv("DATABASE_NAME","learning"),user=os.getenv("DATABASE_USER"),password=os.getenv("DATABASE_PASSWORD"),cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("Database succesfully connected")
+        break
+    except Exception as error:
+        retry_count+=1
+        print(f"Connection failed ({retry_count}/{max_retries}): {error}")
+        if retry_count < max_retries:
+            print("retrying in 2 seconds..")
+            time.sleep(2)
+        else:
+            print("Max retries reached. Exiting...")
+            exit(1)
+        
+
 my_post = [{
       "title": "title of post 1",
       "content": "content of post 1",
