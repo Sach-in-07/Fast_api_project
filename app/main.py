@@ -60,8 +60,13 @@ async def root():
 #     return {"data":"just check"}
 @obj.get("/posts")
 def get_posts():
+    # posts = cursor.execute("""select * from posts """)
+    cursor.execute("""select * from posts """)
+    posts = cursor.fetchall()
+    print(posts)
     # return {"data":"This is ur posts"}
-    return {"data":my_post}
+    # return {"data":my_post}
+    return {"data":posts}
 
 # @obj.post("/createposts")
 # # req : dict = Body(...) -> ye body ka saara content ko dict convert karke req me store karta hai ,dict ke jagah agar str likha toh input side se bhi stri aana chahiye tabhi koi error nhi aayega
@@ -82,6 +87,9 @@ def find_index_post(id):
             return i
 @obj.post("/posts",status_code=status.HTTP_201_CREATED)
 async def create_posts(post:Post):
+    # cursor.execute(f"insert into posts (title,content,published) values({post.title},{post.content},{post.publish})") -> this way is not good because it is vulnerable to sql injection
+    cursor.execute("""insert into posts (title,content,published) values (
+        %s,%s,%s)""",(post.title,post.content,post.publish))
     # print(post)
     # print(post.model_dump())
     post_dict = post.model_dump()
