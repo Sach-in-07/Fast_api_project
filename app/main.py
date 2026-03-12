@@ -18,7 +18,7 @@ retry_count = 0
 class Post(BaseModel):
     title : str
     content : str
-    id : int
+    # id : int
     publish : bool = True # optional one
     # rating: Optional[int] = None # using library 
 
@@ -63,7 +63,7 @@ def get_posts():
     # posts = cursor.execute("""select * from posts """)
     cursor.execute("""select * from posts """)
     posts = cursor.fetchall()
-    print(posts)
+    # print(posts)
     # return {"data":"This is ur posts"}
     # return {"data":my_post}
     return {"data":posts}
@@ -89,21 +89,26 @@ def find_index_post(id):
 async def create_posts(post:Post):
     # cursor.execute(f"insert into posts (title,content,published) values({post.title},{post.content},{post.publish})") -> this way is not good because it is vulnerable to sql injection
     cursor.execute("""insert into posts (title,content,published) values (
-        %s,%s,%s)""",(post.title,post.content,post.publish))
+        %s,%s,%s) returning *""",(post.title,post.content,post.publish))
+    new_post = cursor.fetchone()
+    conn.commit()
     # print(post)
     # print(post.model_dump())
-    post_dict = post.model_dump()
-    post_dict["id"] = randrange(1,10000000)
-    my_post.append(post_dict)
+    # post_dict = post.model_dump()
+    # post_dict["id"] = randrange(1,10000000)
+    # my_post.append(post_dict)
     
-    return {"data":post_dict}
+    return {"data":new_post}
 
 
 @obj.get("/posts/{id}")
 async def get_post(id:int,response:Response):
     # post = find_post((id)) # give {  "post_detail": null} beacuse id is str and in my function i compare int to string
     # post = find_post(int(id))
-    post = find_post(id)
+    cursor.execute("""select * from posts where id = %s""",str(id))
+    post = cursor.fetchone()
+    # post = find_post(id)
+    
     # print(post)
     if not post:
         # response.status_code =  404
@@ -125,20 +130,26 @@ async def delete_post(id:int):
     # deleting post
     #  find the index in the array that has required ID
     # my_post.pop(index)
-    index = find_index_post(id)
-    print(index)
+    # index = find_index_post(id)
+    # print(index)
+    cursor.execute("""delete from posts where id = %s returning *""",str(id))
+    deleted_post = cursor.fetchone()
+    conn.commit()
     
-    if index == None:
+    if deleted_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"id {id} is not present")
-    my_post.pop(index)
+    # my_post.pop(index)
     Response (status_code=status.HTTP_204_NO_CONTENT,content="success")
     
 @obj.put("/posts/{id}")
 async def update_post(id:int,post:Post):
-    index  = find_index_post(id)
-    if index == None:
+    # index  = find_index_post(id)
+    cursor.execute("""update posts set title = %s, content = %s, published = %s where id = %s returning *""",(post.title, post.content, post.publish, str(id)))
+    updated_post = cursor.fetchone()
+    conn.commit()
+    if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"id {id} is not present")
-    post_dict = post.model_dump()
-    post_dict['id'] = id
-    my_post[index] = post_dict
-    return {"message":f"updated post --> {post_dict}"}
+    # post_dict = post.model_dump()
+    # post_dict['id'] = id
+    # my_post[index] = post_dict
+    return {"message":updated_post}
