@@ -7,13 +7,18 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time,os
 from dotenv import load_dotenv
+from . import models
+from .database import engine
 
 load_dotenv()
+
 obj = FastAPI()
 max_retries = int(os.getenv("MAX_RETRIES", 5))
 retry_count = 0
 # app = FastAPI() # during running the server uvicorn <pyfile name(here it is main)>:<instance name(here it is obj or app)> --reload(for auto reloading) <port>
 # if there is two same function with same HTTP method then first apply one who is write first,after that they don't search
+
+models.Base.metadata.create_all(bind=engine)
 
 class Post(BaseModel):
     title : str
